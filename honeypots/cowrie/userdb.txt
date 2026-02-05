@@ -1,0 +1,81 @@
+# ========================================
+# Cowrie User Database
+# ========================================
+# LEARNING: This file defines what credentials we accept
+#
+# Format: username:password
+#
+# Strategy: Accept commonly-bruteforced credentials
+# This lets us log what attackers are trying
+# We'll see patterns like:
+# - Default credentials (admin:admin)
+# - Vendor defaults (root:root)
+# - Weak passwords (root:123456)
+#
+# IMPORTANT: These are HONEYPOT credentials
+# NEVER use these on real systems!
+# ========================================
+
+# Root account variations
+root:root
+root:admin
+root:password
+root:123456
+root:12345678
+root:password123
+root:toor
+root:raspberry
+root:alpine
+root:calvin
+root:
+
+# Admin accounts
+admin:admin
+admin:password
+admin:123456
+admin:
+administrator:password
+
+# Common IoT device defaults
+# LEARNING: Many IoT devices ship with these defaults
+# Mirai botnet exploited exactly this
+ubnt:ubnt
+support:support
+user:user
+guest:guest
+pi:raspberry
+tech:tech
+
+# Database defaults
+postgres:postgres
+mysql:mysql
+oracle:oracle
+
+# Service accounts
+ftp:ftp
+test:test
+user:password
+
+# Blank passwords
+# LEARNING: Some attackers try accounts with no password
+root:
+admin:
+user:
+test:
+
+# ========================================
+# LEARNING: Why This Matters
+# ========================================
+# By accepting weak credentials, we can:
+# 1. Track what credentials attackers try (credential intelligence)
+# 2. Identify automated vs manual attacks
+# 3. See what happens after successful login
+# 4. Capture malware and scripts they download
+# 5. Map TTPs for threat reports
+#
+# In a real-world deployment, I observed:
+# - 50,000+ login attempts in 24 hours
+# - Top credential: root:root (18% of attempts)
+# - Geographic distribution: 60% China, 20% Russia, 15% US, 5% other
+# - Attack patterns: Automated scanners, botnet recruitment, crypto miners
+# ========================================

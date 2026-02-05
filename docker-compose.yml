@@ -1,0 +1,409 @@
+# ========================================
+# HoneyNet Intelligence Platform
+# Docker Compose Configuration
+# ========================================
+#
+# LEARNING NOTE: This docker-compose file orchestrates all services
+# Each service is isolated but can communicate through defined networks
+#
+# Networks:
+#   - internet-facing: Honeypots and Snort (exposed to public)
+#   - backend: Internal services (API, databases)
+#   - elk: Log processing pipeline
+#
+# This separation provides defense-in-depth:
+#   - Compromised honeypot can't access databases
+#   - Backend API not directly exposed to internet
+#   - ELK stack isolated for log processing
+# ========================================
+
+version: '3.8'
+
+# ========================================
+# NETWORKS
+# ========================================
+networks:
+  # Internet-facing network for honeypots
+  internet-facing:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+    # LEARNING: This network will be exposed to the internet
+    # We use iptables rules to restrict outbound traffic
+
+  # Internal backend network
+  backend:
+    driver: bridge
+    internal: true  # No internet access
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+    # LEARNING: 'internal: true' prevents containers from reaching internet
+    # Perfect for databases and internal APIs
+
+  # ELK stack network
+  elk:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+
+# ========================================
+# VOLUMES (Persistent Storage)
+# ========================================
+volumes:
+  # Honeypot data
+  cowrie-data:
+  dionaea-data:
+  
+  # ELK Stack
+  elasticsearch-data:
+  logstash-data:
+  
+  # Databases
+  postgres-data:
+  mongo-data:
+  redis-data:
+  
+  # Snort data
+  snort-logs:
+  snort-rules:
+  
+  # GeoIP databases
+  geoip-data:
+
+# ========================================
+# SERVICES
+# ========================================
+services:
+
+  # ========================================
+  # HONEYPOT LAYER
+  # ========================================
+  
+  # Cowrie SSH/Telnet Honeypot
+  # LEARNING: Cowrie emulates SSH/Telnet servers to capture credential attacks
+  cowrie:
+    build:
+      context: ./honeypots/cowrie
+      dockerfile: Dockerfile
+    container_name: cowrie
+    hostname: ${COWRIE_HOSTNAME:-server01}
+    restart: unless-stopped
+    networks:
+      internet-facing:
+        ipv4_address: 172.20.0.10
+      elk:  # Connected to ELK for log shipping
+    ports:
+      - "${COWRIE_SSH_PORT:-2222}:2222"     # SSH honeypot
+      - "${COWRIE_TELNET_PORT:-2223}:2223"  # Telnet honeypot
+    volumes:
+      - cowrie-data:/cowrie/var/log/cowrie
+      - ./honeypots/cowrie/cowrie.cfg:/cowrie/etc/cowrie.cfg:ro
+    environment:
+      - COWRIE_SSH_PORT=${COWRIE_SSH_PORT:-2222}
+      - COWRIE_TELNET_PORT=${COWRIE_TELNET_PORT:-2223}
+    # Resource limits to prevent DoS
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    # LEARNING: We limit CPU/memory to prevent attackers from
+    # using our honeypot to DoS other systems via resource exhaustion
+
+  # Dionaea Malware Capture Honeypot
+  # LEARNING: Dionaea emulates vulnerable services (SMB, HTTP, FTP) to capture malware
+  dionaea:
+    build:
+      context: ./honeypots/dionaea
+      dockerfile: Dockerfile
+    container_name: dionaea
+    restart: unless-stopped
+    networks:
+      internet-facing:
+        ipv4_address: 172.20.0.11
+      elk:
+    ports:
+      - "21:21"      # FTP
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "445:445"    # SMB
+      - "1433:1433"  # MSSQL
+      - "3306:3306"  # MySQL
+    volumes:
+      - dionaea-data:/opt/dionaea/var/dionaea
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # ========================================
+  # INTRUSION DETECTION LAYER
+  # ========================================
+  
+  # Snort IDS
+  # LEARNING: Snort analyzes network traffic for malicious patterns
+  snort:
+    build:
+      context: ./ids/snort
+      dockerfile: Dockerfile
+    container_name: snort
+    restart: unless-stopped
+    network_mode: "host"  # Required for promiscuous mode packet capture
+    # LEARNING: host mode allows Snort to see all traffic on the host
+    # In production, use network taps or span ports
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    # LEARNING: These capabilities allow packet capture without root
+    volumes:
+      - snort-logs:/var/log/snort
+      - snort-rules:/etc/snort/rules
+      - ./ids/snort/snort.conf:/etc/snort/snort.conf:ro
+    environment:
+      - INTERFACE=eth0
+      - HOME_NET=${PUBLIC_IP:-0.0.0.0}/32
+    command: ["-i", "eth0", "-c", "/etc/snort/snort.conf", "-A", "fast", "-l", "/var/log/snort"]
+
+  # ========================================
+  # LOG PROCESSING (ELK STACK)
+  # ========================================
+  
+  # Elasticsearch
+  # LEARNING: Search and analytics engine for all security events
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-8.11.0}
+    container_name: elasticsearch
+    restart: unless-stopped
+    networks:
+      - elk
+      - backend  # Backend API needs to query Elasticsearch
+    ports:
+      - "${ELASTIC_PORT:-9200}:9200"
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=honeynet-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms${ELASTIC_MEM_LIMIT:-2g} -Xmx${ELASTIC_MEM_LIMIT:-2g}"
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    # LEARNING: memory_lock prevents swapping (critical for performance)
+    deploy:
+      resources:
+        limits:
+          memory: ${ELASTIC_MEM_LIMIT:-2g}
+
+  # Logstash
+  # LEARNING: Parses, enriches, and transforms logs before indexing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${ELASTIC_VERSION:-8.11.0}
+    container_name: logstash
+    restart: unless-stopped
+    networks:
+      - elk
+    ports:
+      - "5044:5044"  # Beats input
+      - "5000:5000/tcp"  # TCP input
+      - "5000:5000/udp"  # UDP input
+    environment:
+      - "LS_JAVA_OPTS=-Xms${LOGSTASH_MEM_LIMIT:-1g} -Xmx${LOGSTASH_MEM_LIMIT:-1g}"
+      - ELASTIC_HOST=${ELASTIC_HOST:-elasticsearch}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+    volumes:
+      - ./elk-stack/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./elk-stack/logstash/pipelines:/usr/share/logstash/config/pipelines:ro
+      - logstash-data:/usr/share/logstash/data
+      - geoip-data:/usr/share/logstash/geoip
+    depends_on:
+      - elasticsearch
+
+  # Kibana
+  # LEARNING: Web UI for visualizing and exploring Elasticsearch data
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION:-8.11.0}
+    container_name: kibana
+    restart: unless-stopped
+    networks:
+      - elk
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-changeme_32_character_key_here}
+    depends_on:
+      - elasticsearch
+
+  # Filebeat
+  # LEARNING: Lightweight shipper that sends logs from honeypots to Logstash
+  filebeat:
+    build:
+      context: ./elk-stack/filebeat
+      dockerfile: Dockerfile
+    container_name: filebeat
+    restart: unless-stopped
+    user: root  # Required to read Docker logs
+    networks:
+      - elk
+      - internet-facing  # To access honeypot containers
+    volumes:
+      - ./elk-stack/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - cowrie-data:/var/log/cowrie:ro
+      - dionaea-data:/var/log/dionaea:ro
+      - snort-logs:/var/log/snort:ro
+    command: filebeat -e -strict.perms=false
+    depends_on:
+      - logstash
+
+  # ========================================
+  # DATABASES
+  # ========================================
+  
+  # PostgreSQL
+  # LEARNING: Stores structured attack data (IPs, sessions, correlations)
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-15-alpine}
+    container_name: postgres
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-honeynet}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=${POSTGRES_DB:-honeynet_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/database/init_postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # LEARNING: init.sql runs on first startup to create tables
+
+  # MongoDB
+  # LEARNING: Stores raw logs and malware metadata (semi-structured data)
+  mongodb:
+    image: mongo:${MONGO_VERSION:-7.0}
+    container_name: mongodb
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-changeme}
+      - MONGO_INITDB_DATABASE=${MONGO_DB:-honeynet_logs}
+    volumes:
+      - mongo-data:/data/db
+
+  # Redis
+  # LEARNING: Used for caching and real-time event streaming
+  redis:
+    image: redis:${REDIS_VERSION:-7-alpine}
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis-data:/data
+
+  # ========================================
+  # BACKEND SERVICES
+  # ========================================
+  
+  # FastAPI Backend
+  # LEARNING: Core intelligence engine - correlation, scoring, MITRE mapping
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    restart: unless-stopped
+    networks:
+      - backend
+      - elk  # Needs to query Elasticsearch
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_SECRET_KEY=${API_SECRET_KEY:-changeme}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-1440}
+      
+      # Database connections
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-honeynet}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=${POSTGRES_DB:-honeynet_db}
+      
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USER=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-changeme}
+      - MONGO_DB=${MONGO_DB:-honeynet_logs}
+      
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      
+      - ELASTIC_HOST=elasticsearch
+      - ELASTIC_PORT=9200
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      
+      # Threat Intelligence APIs
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - GEOIP_DB_PATH=${GEOIP_DB_PATH:-/app/data/geoip/GeoLite2-City.mmdb}
+    volumes:
+      - ./backend:/app
+      - geoip-data:/app/data/geoip
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+      - elasticsearch
+
+  # ========================================
+  # ALERTING
+  # ========================================
+  
+  # Alert Manager - Python script (run manually)
+  # python3 alerting/alert_manager.py
+
+# ========================================
+# LEARNING SUMMARY
+# ========================================
+# This Docker Compose file demonstrates:
+#
+# 1. Network Segmentation: Three isolated networks for security
+# 2. Resource Limits: Prevent DoS via resource exhaustion
+# 3. Data Persistence: Volumes ensure data survives restarts
+# 4. Service Dependencies: Proper startup order
+# 5. Environment Configuration: Centralized config via .env
+# 6. Security Best Practices: Internal networks, limited capabilities
+#
+# In a production SOC, you'd also add:
+# - Health checks for each service
+# - Automatic restarts with backoff
+# - Log rotation to prevent disk fill
+# - Secrets management (Docker Secrets, Vault)
+# - Service mesh for encryption (Istio, Linkerd)
+# ========================================

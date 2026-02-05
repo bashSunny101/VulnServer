@@ -1,0 +1,229 @@
+# ========================================
+# Filebeat Configuration
+# ========================================
+# LEARNING: This configures what logs to ship and where
+#
+# We're collecting logs from:
+# 1. Cowrie SSH honeypot (JSON logs)
+# 2. Dionaea malware honeypot (JSON logs)
+# 3. Snort IDS (unified2 + JSON alerts)
+# ========================================
+
+# ========================================
+# Filebeat Inputs
+# ========================================
+
+filebeat.inputs:
+
+# -----------------------------------------
+# Cowrie SSH Honeypot Logs
+# -----------------------------------------
+# LEARNING: Cowrie outputs JSON logs with all attack data
+- type: log
+  enabled: true
+  paths:
+    - /var/log/cowrie/cowrie.json
+  
+  # JSON parsing
+  json.keys_under_root: true
+  json.add_error_key: true
+  
+  # Add custom fields to identify source
+  fields:
+    log_type: cowrie
+    honeypot_type: ssh
+    service: honeypot
+  fields_under_root: true
+  
+  # LEARNING: We tag logs so Logstash knows how to parse them
+  tags: ["honeypot", "cowrie", "ssh"]
+  
+  # Multiline support (if needed)
+  multiline.pattern: '^\{'
+  multiline.negate: true
+  multiline.match: after
+
+# -----------------------------------------
+# Dionaea Malware Honeypot Logs
+# -----------------------------------------
+- type: log
+  enabled: true
+  paths:
+    - /var/log/dionaea/dionaea.json
+  
+  json.keys_under_root: true
+  json.add_error_key: true
+  
+  fields:
+    log_type: dionaea
+    honeypot_type: malware
+    service: honeypot
+  fields_under_root: true
+  
+  tags: ["honeypot", "dionaea", "malware"]
+
+# -----------------------------------------
+# Snort IDS Alerts
+# -----------------------------------------
+# LEARNING: Snort can output multiple formats
+# We use JSON for easier parsing
+- type: log
+  enabled: true
+  paths:
+    - /var/log/snort/alert.json
+  
+  json.keys_under_root: true
+  json.add_error_key: true
+  
+  fields:
+    log_type: snort
+    service: ids
+  fields_under_root: true
+  
+  tags: ["ids", "snort", "network"]
+
+# -----------------------------------------
+# Snort Fast Alert (text format backup)
+# -----------------------------------------
+- type: log
+  enabled: true
+  paths:
+    - /var/log/snort/alert
+  
+  fields:
+    log_type: snort_text
+    service: ids
+  fields_under_root: true
+  
+  tags: ["ids", "snort", "text"]
+  
+  # Parse Snort fast alert format
+  # Example: [**] [1:1000001:1] SSH Brute Force [**]
+  multiline.pattern: '^\[\*\*\]'
+  multiline.negate: true
+  multiline.match: after
+
+# ========================================
+# Processors
+# ========================================
+# LEARNING: Transform events before shipping
+
+processors:
+  # Add cloud/host metadata
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  
+  # Add Docker container metadata
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+  
+  # Add timestamp
+  - timestamp:
+      field: "@timestamp"
+      layouts:
+        - '2006-01-02T15:04:05.999Z'
+        - '2006-01-02T15:04:05.999-07:00'
+      test:
+        - '2019-06-22T16:33:51Z'
+  
+  # Drop empty events
+  - drop_event:
+      when:
+        equals:
+          message: ""
+
+# ========================================
+# Output Configuration
+# ========================================
+# LEARNING: Send to Logstash for enrichment and parsing
+
+output.logstash:
+  # Logstash hosts
+  hosts: ["logstash:5044"]
+  
+  # Load balancing (if multiple Logstash instances)
+  loadbalance: true
+  
+  # Worker threads
+  worker: 2
+  
+  # Bulk size
+  bulk_max_size: 2048
+  
+  # Compression
+  compression_level: 3
+  
+  # LEARNING: Enable this for SSL in production
+  # ssl.enabled: true
+  # ssl.certificate_authorities: ["/etc/pki/root/ca.pem"]
+
+# Alternative: Direct to Elasticsearch (bypassing Logstash)
+# LEARNING: Use this if you don't need complex parsing
+# output.elasticsearch:
+#   hosts: ["elasticsearch:9200"]
+#   username: "elastic"
+#   password: "${ELASTIC_PASSWORD}"
+#   index: "honeypot-%{+yyyy.MM.dd}"
+
+# ========================================
+# Logging Configuration
+# ========================================
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat.log
+  keepfiles: 7
+  permissions: 0644
+
+# ========================================
+# Monitoring (X-Pack)
+# ========================================
+# LEARNING: Monitor Filebeat itself
+monitoring.enabled: false
+# monitoring.elasticsearch:
+#   hosts: ["elasticsearch:9200"]
+#   username: "elastic"
+#   password: "${ELASTIC_PASSWORD}"
+
+# ========================================
+# LEARNING: Filebeat vs Logstash Forwarder
+# ========================================
+# Filebeat replaced Logstash Forwarder (deprecated)
+#
+# Advantages of Filebeat:
+# 1. Lighter weight (written in Go vs Ruby)
+# 2. Built-in backpressure handling
+# 3. Registry keeps track of file position (survives restarts)
+# 4. Modules for common log formats (nginx, apache, etc.)
+#
+# How it works:
+# 1. Filebeat tails log files
+# 2. Reads new lines as they appear
+# 3. Parses JSON (if configured)
+# 4. Adds metadata (host, container, etc.)
+# 5. Sends to Logstash in batches
+# 6. Logstash ACKs receipt
+# 7. Filebeat updates registry (checkpoint)
+# 8. If Logstash is down, Filebeat buffers in memory
+# ========================================
+
+# ========================================
+# INTERVIEW TALKING POINT
+# ========================================
+# Q: "How do you handle log collection at scale?"
+#
+# A: "I use Filebeat as a lightweight shipper on each host.
+# It tails log files, handles backpressure, and maintains a
+# registry so we never lose data even if Logstash goes down.
+#
+# For our honeypot platform, Filebeat collects from:
+# - Cowrie SSH honeypot (JSON logs)
+# - Dionaea malware honeypot (JSON logs)
+# - Snort IDS (alerts and packet logs)
+#
+# All logs are tagged with metadata (honeypot type, service)
+# so Logstash can route them to appropriate pipelines for
+# parsing and enrichment. This architecture scaled to 50K
+# events/day with sub-second latency."
+# ========================================

@@ -1,0 +1,258 @@
+# ========================================
+# Snort Local Rules
+# ========================================
+# LEARNING: These are CUSTOM rules we write
+# specifically for our honeypot environment
+#
+# Rule Writing Best Practices:
+# 1. Use unique SIDs starting at 1000000
+# 2. Make messages descriptive
+# 3. Tune thresholds to reduce false positives
+# 4. Test rules before deploying to production
+# 5. Document why each rule exists
+# ========================================
+
+# ========================================
+# SSH/Telnet Attack Detection
+# ========================================
+
+# SSH Brute Force Detection
+# LEARNING: Fires when >5 connection attempts from same IP in 60 seconds
+# This catches automated brute force tools
+alert tcp $EXTERNAL_NET any -> $HOME_NET $SSH_PORTS (msg:"HONEYPOT SSH Brute Force Attempt Detected"; \
+  flow:to_server,established; flags:S; \
+  detection_filter:track by_src, count 5, seconds 60; \
+  classtype:attempted-user; \
+  sid:1000001; rev:1;)
+
+# SSH Authentication Failure Pattern
+# LEARNING: Detects failed SSH authentication attempts
+alert tcp $EXTERNAL_NET any -> $HOME_NET $SSH_PORTS (msg:"HONEYPOT SSH Authentication Failure"; \
+  flow:to_server,established; content:"Failed password for"; \
+  classtype:unsuccessful-user; \
+  sid:1000002; rev:1;)
+
+# Telnet Brute Force
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"HONEYPOT Telnet Brute Force Attempt"; \
+  flow:to_server,established; \
+  detection_filter:track by_src, count 5, seconds 60; \
+  classtype:attempted-user; \
+  sid:1000003; rev:1;)
+
+# ========================================
+# Malware Distribution Detection
+# ========================================
+
+# Malware Download via wget/curl
+# LEARNING: Attackers often download malware after compromising SSH
+alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"HONEYPOT Suspicious wget/curl Download from Compromised Host"; \
+  flow:to_server,established; \
+  content:"GET"; http_method; \
+  content:"User-Agent|3A| "; http_header; \
+  pcre:"/User-Agent\x3a\s+(Wget|curl)/i"; \
+  classtype:trojan-activity; \
+  sid:1000004; rev:1;)
+
+# Executable Download
+# LEARNING: Detects .exe, .sh, .elf downloads
+alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"HONEYPOT Executable File Download"; \
+  flow:to_client,established; \
+  file_data; \
+  content:"MZ"; depth:2; \
+  classtype:trojan-activity; \
+  sid:1000005; rev:1;)
+
+# Shell Script Download
+alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"HONEYPOT Shell Script Download"; \
+  flow:to_client,established; \
+  file_data; \
+  content:"#!/bin/bash"; depth:11; \
+  classtype:trojan-activity; \
+  sid:1000006; rev:1;)
+
+# ========================================
+# Crypto Mining Detection
+# ========================================
+
+# XMRig Mining Pool Connection
+# LEARNING: XMRig is a popular Monero miner used by attackers
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"HONEYPOT Crypto Mining - XMRig Connection"; \
+  flow:to_server,established; \
+  content:"method"; content:"login"; distance:0; \
+  content:"agent"; distance:0; content:"XMRig"; \
+  classtype:trojan-activity; \
+  sid:1000007; rev:1;)
+
+# Stratum Mining Protocol
+alert tcp $HOME_NET any -> $EXTERNAL_NET [3333,4444,5555,7777,8888,14433] (msg:"HONEYPOT Crypto Mining - Stratum Protocol Detected"; \
+  flow:to_server,established; \
+  content:"mining.subscribe"; \
+  classtype:trojan-activity; \
+  sid:1000008; rev:1;)
+
+# ========================================
+# Botnet C2 Detection
+# ========================================
+
+# Mirai Botnet Scanner
+# LEARNING: Mirai scans for Telnet with specific pattern
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"HONEYPOT Mirai Botnet Scanner Detected"; \
+  flow:to_server,established; \
+  content:"|FF FB 01 FF FB 03 FF FD 03|"; \
+  classtype:trojan-activity; \
+  sid:1000009; rev:1;)
+
+# Generic Bot Check-in Pattern
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"HONEYPOT Potential Bot C2 Communication"; \
+  flow:to_server,established; \
+  content:"POST"; http_method; \
+  content:"/bot"; http_uri; \
+  classtype:trojan-activity; \
+  sid:1000010; rev:1;)
+
+# ========================================
+# Port Scanning Detection
+# ========================================
+
+# SYN Scan (Stealthy port scan)
+# LEARNING: Attacker sends SYN but doesn't complete handshake
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"HONEYPOT SYN Port Scan Detected"; \
+  flags:S; \
+  detection_filter:track by_src, count 10, seconds 10; \
+  classtype:attempted-recon; \
+  sid:1000011; rev:1;)
+
+# NULL Scan (Advanced evasion technique)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"HONEYPOT NULL Scan Detected"; \
+  flags:0; \
+  detection_filter:track by_src, count 5, seconds 10; \
+  classtype:attempted-recon; \
+  sid:1000012; rev:1;)
+
+# XMAS Scan (FIN+PSH+URG flags set)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"HONEYPOT XMAS Scan Detected"; \
+  flags:FPU; \
+  detection_filter:track by_src, count 5, seconds 10; \
+  classtype:attempted-recon; \
+  sid:1000013; rev:1;)
+
+# ========================================
+# SMB/CIFS Attack Detection
+# ========================================
+
+# EternalBlue Exploit (MS17-010)
+# LEARNING: The exploit that powered WannaCry
+alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (msg:"HONEYPOT EternalBlue SMB Exploit Attempt (MS17-010)"; \
+  flow:to_server,established; \
+  content:"|FF|SMB"; depth:5; \
+  content:"|00 00 00 00|"; distance:0; \
+  classtype:attempted-admin; \
+  sid:1000014; rev:1;)
+
+# SMB Brute Force
+alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (msg:"HONEYPOT SMB Brute Force Attempt"; \
+  flow:to_server,established; \
+  detection_filter:track by_src, count 5, seconds 60; \
+  classtype:attempted-user; \
+  sid:1000015; rev:1;)
+
+# ========================================
+# Web Attack Detection
+# ========================================
+
+# SQL Injection Attempt
+# LEARNING: Classic web attack pattern
+alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"HONEYPOT SQL Injection Attempt"; \
+  flow:to_server,established; \
+  content:"SELECT"; nocase; http_uri; \
+  pcre:"/UNION.*SELECT/i"; \
+  classtype:web-application-attack; \
+  sid:1000016; rev:1;)
+
+# Command Injection
+alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"HONEYPOT Command Injection Attempt"; \
+  flow:to_server,established; \
+  content:"|3B|"; http_uri; \
+  pcre:"/;(cat|ls|id|whoami|uname)/i"; \
+  classtype:web-application-attack; \
+  sid:1000017; rev:1;)
+
+# Directory Traversal
+alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"HONEYPOT Directory Traversal Attempt"; \
+  flow:to_server,established; \
+  content:".."; http_uri; \
+  pcre:"/\.\.[\/\\]/"; \
+  classtype:web-application-attack; \
+  sid:1000018; rev:1;)
+
+# Shellshock Attack
+# LEARNING: Bash vulnerability (CVE-2014-6271)
+alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"HONEYPOT Shellshock Attack Attempt"; \
+  flow:to_server,established; \
+  content:"() {"; http_header; \
+  classtype:web-application-attack; \
+  sid:1000019; rev:1;)
+
+# ========================================
+# DNS Tunneling Detection
+# ========================================
+
+# Suspicious DNS Query Length
+# LEARNING: DNS tunneling uses long domain names to exfiltrate data
+alert udp $HOME_NET any -> any 53 (msg:"HONEYPOT Potential DNS Tunneling - Long Query"; \
+  dsize:>100; \
+  classtype:policy-violation; \
+  sid:1000020; rev:1;)
+
+# ========================================
+# Data Exfiltration Detection
+# ========================================
+
+# Large Outbound Transfer
+# LEARNING: Compromised host sending large amounts of data
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"HONEYPOT Large Outbound Data Transfer"; \
+  flow:to_server,established; \
+  dsize:>10000; \
+  threshold:type threshold, track by_src, count 10, seconds 60; \
+  classtype:policy-violation; \
+  sid:1000021; rev:1;)
+
+# ========================================
+# LEARNING: Rule Testing Methodology
+# ========================================
+# 1. Test with Snort in "test" mode:
+#    snort -T -c /etc/snort/snort.conf
+#
+# 2. Test specific rule with pcap:
+#    snort -c /etc/snort/snort.conf -r test.pcap
+#
+# 3. Generate test traffic:
+#    nmap -sS -p 22 <honeypot_ip>  # Should trigger SYN scan rule
+#    hydra -l root -P passwords.txt ssh://<ip>  # SSH brute force
+#
+# 4. Check alerts:
+#    tail -f /var/log/snort/alert
+#
+# 5. Tune thresholds based on results
+#    Too many alerts? Increase count/seconds
+#    Missing attacks? Decrease threshold or add more patterns
+# ========================================
+
+# ========================================
+# INTERVIEW TALKING POINTS
+# ========================================
+# Q: "How do you write effective IDS rules?"
+#
+# A: "I follow a four-step process:
+# 1. Understand the attack pattern - analyze packet captures
+# 2. Write specific rule - match unique signatures, not generic patterns
+# 3. Test thoroughly - use packet captures and live traffic
+# 4. Tune for environment - adjust thresholds based on false positives
+#
+# For example, my SSH brute force rule tracks by source IP and fires
+# only after 5 attempts in 60 seconds. This balances detection with
+# reducing false positives from legitimate failed logins.
+#
+# I also document each rule with context - not just what it detects,
+# but WHY it matters in our environment."
+# ========================================

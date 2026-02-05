@@ -189,9 +189,6 @@ python3 alerting/alert_manager.py
 - **Monitoring**: Review captured data regularly for sensitive information
 - **Updates**: Keep Docker images and dependencies current
 
-## 📄 License
-
-MIT License - See LICENSE file for details
 
 ## 🤝 Contributing
 

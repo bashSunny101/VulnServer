@@ -29,13 +29,12 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     libreadline-dev \
     libsqlite3-dev \
-    python3-sqlite \
-    libemu-dev \
     libev-dev \
     libudns-dev \
     libgc-dev \
     libpcap-dev \
     libnl-genl-3-dev \
+    cython3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create dionaea user

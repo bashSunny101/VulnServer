@@ -1,0 +1,193 @@
+# ========================================
+# HoneyNet Intelligence Platform
+# Simplified Production Deployment
+# ========================================
+# This version uses pre-built images for faster deployment
+# and lower resource usage on t3.small (2GB RAM)
+# ========================================
+
+networks:
+  internet-facing:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+  elk:
+    driver: bridge
+
+volumes:
+  cowrie-logs:
+  cowrie-downloads:
+  elasticsearch-data:
+  postgres-data:
+  mongo-data:
+
+services:
+
+  # ========================================
+  # HONEYPOT - Cowrie SSH/Telnet
+  # ========================================
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: cowrie
+    hostname: ${COWRIE_HOSTNAME:-server01}
+    restart: unless-stopped
+    networks:
+      - internet-facing
+      - elk
+    ports:
+      - "${COWRIE_SSH_PORT:-2222}:2222"
+      - "${COWRIE_TELNET_PORT:-2223}:2223"
+    volumes:
+      - cowrie-logs:/cowrie/cowrie-git/var/log/cowrie
+      - cowrie-downloads:/cowrie/cowrie-git/var/lib/cowrie/downloads
+      - ./honeypots/cowrie/cowrie.cfg:/cowrie/cowrie-git/etc/cowrie.cfg:ro
+      - ./honeypots/cowrie/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt:ro
+    mem_limit: 256m
+    cpus: 0.5
+
+  # ========================================
+  # ELK STACK
+  # ========================================
+  
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-8.11.0}
+    container_name: elasticsearch
+    restart: unless-stopped
+    networks:
+      - elk
+      - backend
+    ports:
+      - "${ELASTIC_PORT:-9200}:9200"
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=honeynet-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms${ELASTIC_MEM_LIMIT:-512m} -Xmx${ELASTIC_MEM_LIMIT:-512m}"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    mem_limit: 1g
+    cpus: 1.0
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${ELASTIC_VERSION:-8.11.0}
+    container_name: logstash
+    restart: unless-stopped
+    networks:
+      - elk
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+    environment:
+      - "LS_JAVA_OPTS=-Xms${LOGSTASH_MEM_LIMIT:-256m} -Xmx${LOGSTASH_MEM_LIMIT:-256m}"
+      - ELASTIC_HOST=elasticsearch
+    volumes:
+      - ./elk-stack/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    depends_on:
+      - elasticsearch
+    mem_limit: 512m
+    cpus: 0.5
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION:-8.11.0}
+    container_name: kibana
+    restart: unless-stopped
+    networks:
+      - elk
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_SECURITY_ENABLED=false
+    depends_on:
+      - elasticsearch
+    mem_limit: 512m
+    cpus: 0.5
+
+  # ========================================
+  # DATABASES
+  # ========================================
+  
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-15-alpine}
+    container_name: postgres
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-honeynet}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=${POSTGRES_DB:-honeynet_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/database/init_postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    mem_limit: 128m
+    cpus: 0.25
+
+  mongodb:
+    image: mongo:${MONGO_VERSION:-7.0}
+    container_name: mongodb
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-changeme}
+    volumes:
+      - mongo-data:/data/db
+    mem_limit: 128m
+    cpus: 0.25
+
+  # ========================================
+  # BACKEND API
+  # ========================================
+  
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    restart: unless-stopped
+    networks:
+      - backend
+      - elk
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-honeynet}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=${POSTGRES_DB:-honeynet_db}
+      
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USER=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-changeme}
+      - MONGO_DB=${MONGO_DB:-honeynet_logs}
+      
+      - ELASTIC_HOST=elasticsearch
+      - ELASTIC_PORT=9200
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - postgres
+      - mongodb
+      - elasticsearch
+    mem_limit: 256m
+    cpus: 0.5

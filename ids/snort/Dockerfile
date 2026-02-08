@@ -32,6 +32,8 @@ RUN apt-get update && apt-get install -y \
     autoconf \
     libtool \
     pkg-config \
+    flex \
+    bison \
     && rm -rf /var/lib/apt/lists/*
 
 # Install DAQ (Data Acquisition library)

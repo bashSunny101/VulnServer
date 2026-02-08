@@ -51,7 +51,7 @@ async def get_dashboard_stats():
                     "filter": {"range": {"threat_score": {"gte": 51, "lt": 76}}}
                 },
                 "by_country": {
-                    "terms": {"field": "geoip.country_name.keyword", "size": 10}
+                    "terms": {"field": "geoip.geo.country_name.keyword", "size": 10}
                 },
                 "by_type": {
                     "terms": {"field": "eventid.keyword", "size": 10}

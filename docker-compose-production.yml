@@ -66,9 +66,7 @@ services:
     cpus: 0.5
 
   dionaea:
-    build:
-      context: ./honeypots/dionaea
-      dockerfile: Dockerfile
+    image: dinotools/dionaea:latest
     container_name: dionaea
     restart: unless-stopped
     networks:
@@ -83,7 +81,8 @@ services:
       - "1433:1433"
       - "3306:3306"
     volumes:
-      - dionaea-data:/opt/dionaea/var/dionaea
+      - dionaea-data:/opt/dionaea/var
+      - ./honeypots/dionaea/dionaea.cfg:/opt/dionaea/etc/dionaea/dionaea.cfg:ro
     mem_limit: 512m
     cpus: 0.5
 

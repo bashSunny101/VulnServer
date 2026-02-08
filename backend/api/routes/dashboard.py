@@ -170,12 +170,12 @@ async def get_geographic_distribution():
         locations = []
         for bucket in result["aggregations"]["by_location"]["buckets"]:
             hit = bucket["location"]["hits"]["hits"][0]["_source"]
-            if "geoip" in hit and "location" in hit["geoip"]:
+            if "geoip" in hit and "geo" in hit["geoip"] and "location" in hit["geoip"]["geo"]:
                 locations.append({
                     "country_code": bucket["key"],
-                    "country": hit["geoip"].get("country_name", "Unknown"),
-                    "latitude": hit["geoip"]["location"]["lat"],
-                    "longitude": hit["geoip"]["location"]["lon"],
+                    "country": hit["geoip"]["geo"].get("country_name", "Unknown"),
+                    "latitude": hit["geoip"]["geo"]["location"]["lat"],
+                    "longitude": hit["geoip"]["geo"]["location"]["lon"],
                     "attack_count": bucket["doc_count"],
                     "avg_threat_score": round(bucket["avg_threat"]["value"] or 0, 1)
                 })

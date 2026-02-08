@@ -40,7 +40,7 @@ async def get_recent_attacks(
                 "id": hit["_id"],
                 "timestamp": source.get("@timestamp"),
                 "src_ip": source.get("src_ip"),
-                "country": source.get("geoip", {}).get("country_name"),
+                "country": source.get("geoip", {}).get("geo", {}).get("country_name"),
                 "attack_type": source.get("eventid"),
                 "threat_score": source.get("threat_score", 0),
                 "honeypot": hit["_index"].split("-")[0]
@@ -127,8 +127,8 @@ async def search_attacks(search: AttackSearch = Body(...)):
             attacks.append({
                 "timestamp": source.get("@timestamp"),
                 "src_ip": source.get("src_ip"),
-                "country": source.get("geoip", {}).get("country_name"),
-                "city": source.get("geoip", {}).get("city_name"),
+                "country": source.get("geoip", {}).get("geo", {}).get("country_name"),
+                "city": source.get("geoip", {}).get("geo", {}).get("city_name"),
                 "attack_type": source.get("eventid"),
                 "threat_score": source.get("threat_score", 0),
                 "details": source.get("message", source.get("input"))

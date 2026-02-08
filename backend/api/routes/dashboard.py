@@ -149,7 +149,7 @@ async def get_geographic_distribution():
             "aggs": {
                 "by_location": {
                     "terms": {
-                        "field": "geoip.country_iso_code.keyword",
+                        "field": "geoip.geo.country_iso_code.keyword",
                         "size": 100
                     },
                     "aggs": {
@@ -157,7 +157,7 @@ async def get_geographic_distribution():
                         "location": {
                             "top_hits": {
                                 "size": 1,
-                                "_source": ["geoip.country_name", "geoip.location"]
+                                "_source": ["geoip.geo.country_name", "geoip.geo.location"]
                             }
                         }
                     }

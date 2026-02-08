@@ -11,6 +11,8 @@ python-multipart==0.0.6
 psycopg2-binary==2.9.9  # PostgreSQL
 pymongo==4.6.1          # MongoDB
 redis==5.0.1            # Redis
+sqlalchemy==2.0.25      # ORM
+asyncpg==0.29.0         # Async PostgreSQL
 
 # Elasticsearch
 elasticsearch==8.11.1

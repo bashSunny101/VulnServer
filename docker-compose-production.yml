@@ -58,8 +58,6 @@ services:
     volumes:
       - cowrie-logs:/cowrie/cowrie-git/var/log/cowrie
       - cowrie-downloads:/cowrie/cowrie-git/var/lib/cowrie/downloads
-      - ./honeypots/cowrie/cowrie.cfg:/cowrie/cowrie-git/etc/cowrie.cfg:ro
-      - ./honeypots/cowrie/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt:ro
     mem_limit: 256m
     cpus: 0.5
 

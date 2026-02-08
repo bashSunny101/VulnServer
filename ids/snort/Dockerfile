@@ -51,7 +51,7 @@ RUN wget https://www.snort.org/downloads/snort/daq-2.0.7.tar.gz && \
 RUN wget https://www.snort.org/downloads/snort/snort-2.9.20.tar.gz && \
     tar xvfz snort-2.9.20.tar.gz && \
     cd snort-2.9.20 && \
-    ./configure --enable-sourcefire && \
+    ./configure --enable-sourcefire --disable-open-appid && \
     make && \
     make install && \
     ldconfig

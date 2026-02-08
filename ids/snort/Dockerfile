@@ -81,8 +81,8 @@ RUN wget https://www.snort.org/downloads/community/community-rules.tar.gz && \
 # Set ownership
 RUN chown -R snort:snort /etc/snort /var/log/snort
 
-# Switch to snort user
-USER snort
+# Run as root for packet capture - privileged container required
+# USER snort
 
 # Entrypoint using shell form to support environment variable
 CMD /usr/local/bin/snort -c /etc/snort/snort.conf -i ${INTERFACE:-eth0} -A full -l /var/log/snort

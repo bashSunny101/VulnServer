@@ -29,7 +29,12 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 1440
     
     # CORS
-    cors_origins: List[str] = ["http://localhost:3000", "http://localhost"]
+    # LEARNING: Allow frontend from localhost (dev) and AWS IP (production)
+    cors_origins: List[str] = [
+        "http://localhost:3000",
+        "http://localhost",
+        "http://13.63.56.132:3000",  # AWS instance public IP
+    ]
     
     # PostgreSQL
     postgres_host: str = "postgres"

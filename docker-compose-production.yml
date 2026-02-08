@@ -62,7 +62,9 @@ services:
     cpus: 0.5
 
   dionaea:
-    image: dinotools/dionaea:latest
+    build:
+      context: ./honeypots/dionaea
+      dockerfile: Dockerfile
     container_name: dionaea
     restart: unless-stopped
     networks:

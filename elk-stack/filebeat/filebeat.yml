@@ -40,23 +40,23 @@ filebeat.inputs:
   tags: ["honeypot", "cowrie", "ssh"]
 
 # -----------------------------------------
-# Dionaea Malware Honeypot Logs (DISABLED)
+# Dionaea Malware Honeypot Logs
 # -----------------------------------------
-# - type: log
-#   enabled: false
-#   paths:
-#     - /var/log/dionaea/dionaea.json
-#   
-#   json.keys_under_root: true
-#   json.add_error_key: true
-#   
-#   fields:
-#     log_type: dionaea
-#     honeypot_type: malware
-#     service: honeypot
-#   fields_under_root: true
-#   
-#   tags: ["honeypot", "dionaea", "malware"]
+- type: log
+  enabled: true
+  paths:
+    - /var/log/dionaea/dionaea.json
+  
+  json.keys_under_root: true
+  json.add_error_key: true
+  
+  fields:
+    log_type: dionaea
+    honeypot_type: malware
+    service: honeypot
+  fields_under_root: true
+  
+  tags: ["honeypot", "dionaea", "malware"]
 
 # -----------------------------------------
 # Snort IDS Alerts
@@ -65,7 +65,7 @@ filebeat.inputs:
 - type: log
   enabled: true
   paths:
-    - /var/log/snort/alert.log
+    - /var/log/snort/alert
   
   fields:
     log_type: snort

@@ -61,26 +61,26 @@ services:
     mem_limit: 256m
     cpus: 0.5
 
-  # dionaea:
-  #   image: dinotools/dionaea:latest
-  #   container_name: dionaea
-  #   restart: unless-stopped
-  #   networks:
-  #     internet-facing:
-  #       ipv4_address: 172.20.0.11
-  #     elk:
-  #   ports:
-  #     - "21:21"
-  #     - "80:80"
-  #     - "443:443"
-  #     - "445:445"
-  #     - "1433:1433"
-  #     - "3306:3306"
-  #   volumes:
-  #     - dionaea-data:/opt/dionaea/var
-  #     - ./honeypots/dionaea/dionaea.cfg:/opt/dionaea/etc/dionaea/dionaea.cfg:ro
-  #   mem_limit: 512m
-  #   cpus: 0.5
+  dionaea:
+    image: dinotools/dionaea:latest
+    container_name: dionaea
+    restart: unless-stopped
+    networks:
+      internet-facing:
+        ipv4_address: 172.20.0.11
+      elk:
+    ports:
+      - "21:21"
+      - "80:80"
+      - "443:443"
+      - "445:445"
+      - "1433:1433"
+      - "3306:3306"
+    volumes:
+      - dionaea-data:/opt/dionaea/var
+      - ./honeypots/dionaea/dionaea.cfg:/opt/dionaea/etc/dionaea/dionaea.cfg:ro
+    mem_limit: 512m
+    cpus: 0.5
 
   # ========================================
   # INTRUSION DETECTION LAYER

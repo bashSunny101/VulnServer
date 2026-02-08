@@ -351,3 +351,17 @@ class MitreAttackMapper:
 # account lockout policies that reduced successful
 # compromises by 90%."
 # ========================================
+
+# Wrapper functions for API imports
+_mapper_instance = None
+
+async def map_to_mitre_bulk(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Wrapper function for API routes"""
+    global _mapper_instance
+    if _mapper_instance is None:
+        _mapper_instance = MitreMapper()
+    results = []
+    for event in events:
+        result = _mapper_instance.map_to_mitre(event)
+        results.append(result)
+    return results

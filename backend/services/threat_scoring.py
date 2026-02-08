@@ -442,3 +442,13 @@ class ThreatScoringEngine:
 # This scoring reduced false positives by 70% and
 # ensured critical threats got immediate attention."
 # ========================================
+
+# Wrapper functions for API imports
+_scoring_instance = None
+
+def calculate_threat_score(event: Dict[str, Any]) -> int:
+    """Wrapper function for API routes"""
+    global _scoring_instance
+    if _scoring_instance is None:
+        _scoring_instance = ThreatScoringEngine()
+    return _scoring_instance.calculate_threat_score(event)

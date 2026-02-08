@@ -465,3 +465,13 @@ class CorrelationEngine:
 # This correlation increased our detection accuracy by 60%
 # and reduced alert triage time from hours to minutes."
 # ========================================
+
+# Wrapper functions for API imports
+_engine_instance = None
+
+async def correlate_by_ip(ip_address: str, time_range: Optional[tuple] = None) -> Dict[str, Any]:
+    """Wrapper function for API routes"""
+    global _engine_instance
+    if _engine_instance is None:
+        _engine_instance = CorrelationEngine()
+    return await _engine_instance.correlate_by_ip(ip_address, time_range)

@@ -102,7 +102,7 @@ services:
       - snort-rules:/etc/snort/rules
       - ./ids/snort/snort.conf:/etc/snort/snort.conf:ro
     environment:
-      - INTERFACE=eth0
+      - INTERFACE=ens5
       - HOME_NET=${PUBLIC_IP:-0.0.0.0}/32
     mem_limit: 256m
     cpus: 0.5

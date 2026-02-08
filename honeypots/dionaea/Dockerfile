@@ -49,9 +49,10 @@ RUN git clone https://github.com/DinoTools/dionaea.git && \
 WORKDIR /opt/dionaea
 
 # Build dionaea
+# Disable emu module (libemu not available in Ubuntu 22.04)
 RUN mkdir build && \
     cd build && \
-    cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea .. && \
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea -DWITH_EMU=OFF .. && \
     make && \
     make install
 

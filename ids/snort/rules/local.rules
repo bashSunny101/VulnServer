@@ -211,7 +211,7 @@ alert udp $HOME_NET any -> any 53 (msg:"HONEYPOT Potential DNS Tunneling - Long 
 alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"HONEYPOT Large Outbound Data Transfer"; \
   flow:to_server,established; \
   dsize:>10000; \
-  threshold:type threshold, track by_src, count 10, seconds 60; \
+  detection_filter:track by_src, count 10, seconds 60; \
   classtype:policy-violation; \
   sid:1000021; rev:1;)
 

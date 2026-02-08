@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     flex \
     bison \
+    libtirpc-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install DAQ (Data Acquisition library)
@@ -51,7 +52,7 @@ RUN wget https://www.snort.org/downloads/snort/daq-2.0.7.tar.gz && \
 RUN wget https://www.snort.org/downloads/snort/snort-2.9.20.tar.gz && \
     tar xvfz snort-2.9.20.tar.gz && \
     cd snort-2.9.20 && \
-    ./configure --enable-sourcefire --disable-open-appid && \
+    CPPFLAGS="-I/usr/include/tirpc" LDFLAGS="-ltirpc" ./configure --enable-sourcefire --disable-open-appid && \
     make && \
     make install && \
     ldconfig

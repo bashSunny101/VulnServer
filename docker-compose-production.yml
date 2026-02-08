@@ -44,9 +44,7 @@ services:
   # ========================================
   
   cowrie:
-    build:
-      context: ./honeypots/cowrie
-      dockerfile: Dockerfile
+    image: cowrie/cowrie:latest
     container_name: cowrie
     hostname: ${COWRIE_HOSTNAME:-server01}
     restart: unless-stopped
@@ -58,10 +56,10 @@ services:
       - "2222:2222"
       - "2223:2223"
     volumes:
-      - cowrie-logs:/cowrie/var/log/cowrie
-      - cowrie-downloads:/cowrie/var/lib/cowrie/downloads
-      - ./honeypots/cowrie/cowrie.cfg:/cowrie/etc/cowrie.cfg:ro
-      - ./honeypots/cowrie/userdb.txt:/cowrie/etc/userdb.txt:ro
+      - cowrie-logs:/cowrie/cowrie-git/var/log/cowrie
+      - cowrie-downloads:/cowrie/cowrie-git/var/lib/cowrie/downloads
+      - ./honeypots/cowrie/cowrie.cfg:/cowrie/cowrie-git/etc/cowrie.cfg:ro
+      - ./honeypots/cowrie/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt:ro
     mem_limit: 256m
     cpus: 0.5
 
@@ -274,6 +272,7 @@ services:
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_SECRET_KEY=${API_SECRET_KEY:-honeynet-secret-key-change-in-production}
       
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -293,6 +292,7 @@ services:
       
       - ELASTIC_HOST=elasticsearch
       - ELASTIC_PORT=9200
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-}
       
       - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
       - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}

@@ -27,6 +27,7 @@ filebeat.inputs:
   # JSON parsing
   json.keys_under_root: true
   json.add_error_key: true
+  json.message_key: message
   
   # Add custom fields to identify source
   fields:
@@ -35,13 +36,8 @@ filebeat.inputs:
     service: honeypot
   fields_under_root: true
   
-  # LEARNING: We tag logs so Logstash knows how to parse them
+  # LEARNING: We tag logs so  Logstash knows how to parse them
   tags: ["honeypot", "cowrie", "ssh"]
-  
-  # Multiline support (if needed)
-  multiline.pattern: '^\{'
-  multiline.negate: true
-  multiline.match: after
 
 # -----------------------------------------
 # Dionaea Malware Honeypot Logs

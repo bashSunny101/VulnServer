@@ -103,7 +103,7 @@ async def search_attacks(search: AttackSearch = Body(...)):
         must = [{"range": {"@timestamp": {"gte": time_ago}}}]
         
         if search.country:
-            must.append({"match": {"geoip.country_name": search.country}})
+            must.append({"match": {"geoip.geo.country_name": search.country}})
         
         if search.attack_type:
             must.append({"match": {"eventid": search.attack_type}})
@@ -171,7 +171,7 @@ async def get_top_attackers(
                     "aggs": {
                         "avg_threat": {"avg": {"field": "threat_score"}},
                         "countries": {
-                            "terms": {"field": "geoip.country_name.keyword", "size": 1}
+                            "terms": {"field": "geoip.geo.country_name.keyword", "size": 1}
                         }
                     }
                 }

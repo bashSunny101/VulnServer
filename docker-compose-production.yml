@@ -318,6 +318,7 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - internet-facing
     ports:
       - "3000:80"
     depends_on:

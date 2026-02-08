@@ -308,3 +308,22 @@ services:
       - elasticsearch
     mem_limit: 256m
     cpus: 0.5
+
+  # ========================================
+  # FRONTEND DASHBOARD
+  # ========================================
+  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    mem_limit: 128m
+    cpus: 0.25

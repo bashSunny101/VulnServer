@@ -40,36 +40,32 @@ filebeat.inputs:
   tags: ["honeypot", "cowrie", "ssh"]
 
 # -----------------------------------------
-# Dionaea Malware Honeypot Logs
+# Dionaea Malware Honeypot Logs (DISABLED)
 # -----------------------------------------
-- type: log
-  enabled: true
-  paths:
-    - /var/log/dionaea/dionaea.json
-  
-  json.keys_under_root: true
-  json.add_error_key: true
-  
-  fields:
-    log_type: dionaea
-    honeypot_type: malware
-    service: honeypot
-  fields_under_root: true
-  
-  tags: ["honeypot", "dionaea", "malware"]
+# - type: log
+#   enabled: false
+#   paths:
+#     - /var/log/dionaea/dionaea.json
+#   
+#   json.keys_under_root: true
+#   json.add_error_key: true
+#   
+#   fields:
+#     log_type: dionaea
+#     honeypot_type: malware
+#     service: honeypot
+#   fields_under_root: true
+#   
+#   tags: ["honeypot", "dionaea", "malware"]
 
 # -----------------------------------------
 # Snort IDS Alerts
 # -----------------------------------------
-# LEARNING: Snort can output multiple formats
-# We use JSON for easier parsing
+# LEARNING: Snort outputs fast alert format
 - type: log
   enabled: true
   paths:
-    - /var/log/snort/alert.json
-  
-  json.keys_under_root: true
-  json.add_error_key: true
+    - /var/log/snort/alert.log
   
   fields:
     log_type: snort
@@ -77,25 +73,10 @@ filebeat.inputs:
   fields_under_root: true
   
   tags: ["ids", "snort", "network"]
-
-# -----------------------------------------
-# Snort Fast Alert (text format backup)
-# -----------------------------------------
-- type: log
-  enabled: true
-  paths:
-    - /var/log/snort/alert
-  
-  fields:
-    log_type: snort_text
-    service: ids
-  fields_under_root: true
-  
-  tags: ["ids", "snort", "text"]
   
   # Parse Snort fast alert format
   # Example: [**] [1:1000001:1] SSH Brute Force [**]
-  multiline.pattern: '^\[\*\*\]'
+  multiline.pattern: '^\d{2}/\d{2}'
   multiline.negate: true
   multiline.match: after
 

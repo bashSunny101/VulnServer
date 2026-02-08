@@ -39,3 +39,8 @@ async def close_elasticsearch():
 def get_elasticsearch():
     """Get Elasticsearch client"""
     return es_client
+
+
+def get_es_client():
+    """Get Elasticsearch client (alias for compatibility)"""
+    return es_client

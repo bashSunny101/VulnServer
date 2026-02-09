@@ -40,11 +40,16 @@ const AttackFeed = () => {
     };
   }, []);
 
-  const filteredAttacks = attacks.filter(attack => {
-    if (filter === 'critical') return attack.threat_score >= 76;
-    if (filter === 'high') return attack.threat_score >= 51;
-    return true;
-  });
+  const filteredAttacks = attacks
+    .filter(attack => {
+      // Filter out admin IP (testing traffic)
+      if (attack.src_ip === '49.36.190.93') return false;
+      
+      // Filter by threat level
+      if (filter === 'critical') return attack.threat_score >= 76;
+      if (filter === 'high') return attack.threat_score >= 51;
+      return true;
+    });
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">

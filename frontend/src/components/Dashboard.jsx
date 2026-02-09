@@ -15,6 +15,7 @@ const Dashboard = () => {
   const [topAttackers, setTopAttackers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   // Fetch dashboard data
   useEffect(() => {
@@ -32,6 +33,7 @@ const Dashboard = () => {
         setStats(statsRes.data);
         setTimeline(timelineRes.data.timeline);
         setTopAttackers(attackersRes.data.top_attackers);
+        setLastUpdate(new Date());
         setError(null);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -43,8 +45,8 @@ const Dashboard = () => {
 
     fetchData();
     
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
+    // Refresh every 10 seconds for real-time updates
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -69,7 +71,13 @@ const Dashboard = () => {
       {/* Header */}
       <header className="mb-8">
         <h1 className="text-4xl font-bold mb-2">🛡️ HoneyNet Intelligence Platform</h1>
-        <p className="text-gray-400">Real-time Threat Detection & Analysis</p>
+        <div className="flex justify-between items-center">
+          <p className="text-gray-400">Real-time Threat Detection & Analysis</p>
+          <p className="text-sm text-gray-500">
+            Last updated: {lastUpdate.toLocaleTimeString()} 
+            <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          </p>
+        </div>
       </header>
 
       {/* Stats Cards */}

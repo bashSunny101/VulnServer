@@ -36,8 +36,13 @@ async def get_dashboard_stats():
         query = {
             "track_total_hits": True,
             "query": {
-                "range": {
-                    "@timestamp": {"gte": time_24h_ago}
+                "bool": {
+                    "must": [
+                        {"range": {"@timestamp": {"gte": time_24h_ago}}}
+                    ],
+                    "must_not": [
+                        {"term": {"src_ip.keyword": "49.36.190.93"}}
+                    ]
                 }
             },
             "size": 0,
@@ -101,7 +106,14 @@ async def get_attack_timeline(
         query = {
             "track_total_hits": True,
             "query": {
-                "range": {"@timestamp": {"gte": time_ago}}
+                "bool": {
+                    "must": [
+                        {"range": {"@timestamp": {"gte": time_ago}}}
+                    ],
+                    "must_not": [
+                        {"term": {"src_ip.keyword": "49.36.190.93"}}
+                    ]
+                }
             },
             "size": 0,
             "aggs": {
@@ -146,7 +158,14 @@ async def get_geographic_distribution():
         query = {
             "track_total_hits": True,
             "query": {
-                "range": {"@timestamp": {"gte": time_24h_ago}}
+                "bool": {
+                    "must": [
+                        {"range": {"@timestamp": {"gte": time_24h_ago}}}
+                    ],
+                    "must_not": [
+                        {"term": {"src_ip.keyword": "49.36.190.93"}}
+                    ]
+                }
             },
             "size": 0,
             "aggs": {
@@ -168,7 +187,7 @@ async def get_geographic_distribution():
             }
         }
         
-        result = await es.search(index="cowrie-*,dionaea-*", body=query)
+        result = await es.search(index="cowrie-*,dionaea-*,snort-*", body=query)
         
         locations = []
         for bucket in result["aggregations"]["by_location"]["buckets"]:

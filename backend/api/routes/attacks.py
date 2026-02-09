@@ -159,7 +159,14 @@ async def get_top_attackers(
         query = {
             "track_total_hits": True,
             "query": {
-                "range": {"@timestamp": {"gte": time_ago}}
+                "bool": {
+                    "must": [
+                        {"range": {"@timestamp": {"gte": time_ago}}}
+                    ],
+                    "must_not": [
+                        {"term": {"src_ip.keyword": "49.36.190.93"}}
+                    ]
+                }
             },
             "size": 0,
             "aggs": {

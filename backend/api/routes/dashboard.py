@@ -31,6 +31,7 @@ async def get_dashboard_stats():
         
         # Time range: last 24 hours
         time_24h_ago = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        print(f"🔍 DEBUG: Querying with timestamp >= {time_24h_ago}")
         
         # Query all honeypot indices
         query = {
@@ -63,6 +64,8 @@ async def get_dashboard_stats():
         }
         
         result = await es.search(index="cowrie-*,dionaea-*,snort-*", body=query)
+        print(f"🔍 DEBUG: ES returned {result['hits']['total']['value']} total hits")
+        print(f"🔍 DEBUG: Countries: {result['aggregations']['by_country']['buckets'][:5]}")
         
         aggs = result["aggregations"]
         

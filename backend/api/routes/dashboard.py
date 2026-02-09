@@ -5,10 +5,13 @@ Provides statistics and overview data
 from fastapi import APIRouter, HTTPException, Query
 from typing import List
 from datetime import datetime, timedelta
+import logging
 
 from models.attack import DashboardStats
 from database.elasticsearch_client import get_es_client
 from database.postgres import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -31,7 +34,7 @@ async def get_dashboard_stats():
         
         # Time range: last 24 hours
         time_24h_ago = (datetime.utcnow() - timedelta(hours=24)).isoformat()
-        print(f"🔍 DEBUG: Querying with timestamp >= {time_24h_ago}")
+        logger.info(f"🔍 DEBUG: Querying with timestamp >= {time_24h_ago}")
         
         # Query all honeypot indices
         query = {
@@ -64,8 +67,8 @@ async def get_dashboard_stats():
         }
         
         result = await es.search(index="cowrie-*,dionaea-*,snort-*", body=query)
-        print(f"🔍 DEBUG: ES returned {result['hits']['total']['value']} total hits")
-        print(f"🔍 DEBUG: Countries: {result['aggregations']['by_country']['buckets'][:5]}")
+        logger.info(f"🔍 DEBUG: ES returned {result['hits']['total']['value']} total hits")
+        logger.info(f"🔍 DEBUG: Countries: {result['aggregations']['by_country']['buckets'][:5]}")
         
         aggs = result["aggregations"]
         

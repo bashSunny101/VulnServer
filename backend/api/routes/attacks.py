@@ -157,6 +157,7 @@ async def get_top_attackers(
         time_ago = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
         
         query = {
+            "track_total_hits": True,
             "query": {
                 "range": {"@timestamp": {"gte": time_ago}}
             },
@@ -205,6 +206,7 @@ async def get_mitre_techniques(hours: int = Query(24, ge=1, le=168)):
         time_ago = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
         
         query = {
+            "track_total_hits": True,
             "query": {
                 "bool": {
                     "must": [

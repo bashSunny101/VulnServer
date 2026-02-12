@@ -34,6 +34,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost",
         "http://13.63.56.132:3000",  # AWS instance public IP
+        "http://16.16.166.22:3000",  # Added for new frontend IP
     ]
     
     # PostgreSQL
